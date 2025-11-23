@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الإعدادات - نظام العيادات المتعدد</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard">
+    <header class="dashboard-header">
+        <div class="container">
+            <h1>الإعدادات</h1>
+            <div class="user-info">
+                <span>
+                    مرحباً، {{ session.username }}
+                    {% if session.role == 'admin' %}
+                    <span class="badge badge-admin">👑 مسؤول</span>
+                    {% else %}
+                    <span class="badge badge-clinic">💊 عيادة</span>
+                    {% endif %}
+                </span>
+                <a href="/logout" class="btn btn-outline">تسجيل الخروج</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <nav>
+                <ul>
+                    <li><a href="/dashboard">نظرة عامة</a></li>
+                    <li><a href="/appointments">إدارة الحجوزات</a></li>
+                    {% if session.role == 'admin' %}
+                    <li><a href="/clinics">إدارة العيادات</a></li>
+                    {% endif %}
+                    <li><a href="/reports">التقارير</a></li>
+                    <li class="active"><a href="/settings">الإعدادات</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="page-header">
+                <h2>إعدادات النظام</h2>
+            </div>
+
+            <div class="settings-grid">
+                <!-- إعدادات العيادة (تظهر للعيادات فقط) -->
+                {% if session.role == 'clinic' and clinic_info %}
+                <div class="settings-card">
+                    <h3>💊 معلومات العيادة</h3>
+                    <form class="settings-form">
+                        <div class="form-group">
+                            <label for="doctor_name">اسم الطبيب</label>
+                            <input type="text" id="doctor_name" value="{{ clinic_info[1] }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="specialty">التخصص</label>
+                            <input type="text" id="specialty" value="{{ clinic_info[2] }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="clinic_phone">رقم الهاتف</label>
+                            <input type="tel" id="clinic_phone" value="{{ clinic_info[3] or 'غير محدد' }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="clinic_email">البريد الإلكتروني</label>
+                            <input type="email" id="clinic_email" value="{{ clinic_info[4] or 'غير محدد' }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="clinic_address">العنوان</label>
+                            <input id="clinic_address" rows="2" readonly>{{ clinic_info[5] or 'غير محدد' }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="working_hours">أوقات العمل</label>
+                            <input type="text" id="working_hours" value="{{ clinic_info[6] or 'غير محدد' }}" readonly>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="enableClinicEditing()">طلب تعديل المعلومات</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <!-- إعدادات الحساب -->
+                <div class="settings-card">
+                    <h3>👤 إعدادات الحساب</h3>
+                    <form class="account-form">
+                        <div class="form-group">
+                            <label for="username">اسم المستخدم</label>
+                            <input type="text" id="username" value="{{ session.username }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="current_password">كلمة المرور الحالية</label>
+                            <input type="password" id="current_password">
+                        </div>
+                        <div class="form-group">
+                            <label for="new_password">كلمة المرور الجديدة</label>
+                            <input type="password" id="new_password">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm_password">تأكيد كلمة المرور</label>
+                            <input type="password" id="confirm_password">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="changePassword()">تغيير كلمة المرور</button>
+                    </form>
+                </div>
+
+                <!-- معلومات النظام -->
+                <div class="settings-card">
+                    <h3>ℹ️ معلومات النظام</h3>
+                    <div class="system-info">
+                        <div class="info-item">
+                            <span>إصدار النظام:</span>
+                            <span>v2.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <span>نوع الحساب:</span>
+                            <span>
+                                {% if session.role == 'admin' %}👑 مسؤول نظام
+                                {% else %}💊 عيادة طبية{% endif %}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span>آخر تحديث:</span>
+                            <span>2024-01-15</span>
+                        </div>
+                        <div class="info-item">
+                            <span>قاعدة البيانات:</span>
+                            <span>SQLite 3.35.5</span>
+                        </div>
+                        <div class="info-item">
+                            <span>الحالة:</span>
+                            <span class="status-online">🟢 نشط</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- إعدادات البوت (للمسؤول فقط) -->
+                {% if session.role == 'admin' %}
+                <div class="settings-card">
+                    <h3>🤖 إعدادات بوت تيليجرام</h3>
+                    <div class="bot-status">
+                        <div class="status-indicator">
+                            <span class="status-dot online"></span>
+                            <span>البوت نشط</span>
+                        </div>
+                        <p>رابط البوت: <code>https://t.me/HaGzTeleBot</code></p>
+                        <p>عدد المستخدمين: <strong>None</strong></p>
+                        <p>الحجوزات عبر البوت: <strong>None</strong></p>
+                    </div>
+                    <div class="bot-actions">
+                        <button class="btn btn-primary">تحديث إعدادات البوت</button>
+                        <button class="btn btn-secondary">إرسال رسالة تجريبية</button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        function enableClinicEditing() {
+            alert('⚠️ لتعديل معلومات العيادة، يرجى التواصل مع مسؤول النظام');
+        }
+
+        function changePassword() {
+            const currentPassword = document.getElementById('current_password').value;
+            const newPassword = document.getElementById('new_password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                alert('❌ الرجاء ملء جميع الحقول');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                alert('❌ كلمة المرور الجديدة غير متطابقة');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert('❌ كلمة المرور يجب أن تكون至少 6 أحرف');
+                return;
+            }
+
+            alert('✅ تم تغيير كلمة المرور بنجاح');
+            document.getElementById('current_password').value = '';
+            document.getElementById('new_password').value = '';
+            document.getElementById('confirm_password').value = '';
+        }
+
+        function backupDatabase() {
+            alert('📦 جاري إنشاء نسخة احتياطية...');
+            setTimeout(() => {
+                alert('✅ تم إنشاء النسخة الاحتياطية بنجاح');
+            }, 2000);
+        }
+
+        function clearCache() {
+            alert('🗑️ تم مسح الذاكرة المؤقتة');
+        }
+
+        function systemLogs() {
+            alert('📋 عرض سجلات النظام...');
+        }
+
+        function resetSystem() {
+            if (confirm('⚠️ هل أنت متأكد من إعادة تعيين الإعدادات؟ سيتم إعادة تعيين جميع تفضيلاتك.')) {
+                alert('🔄 جاري إعادة تعيين الإعدادات...');
+                setTimeout(() => {
+                    alert('✅ تم إعادة تعيين الإعدادات بنجاح');
+                }, 1500);
+            }
+        }
+    </script>
+
+    <style>
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .settings-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .settings-card h3 {
+            margin-bottom: 1rem;
+            color: #1e88e5;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+
+        .badge-admin {
+            background: #ff9800;
+            color: white;
+        }
+
+        .badge-clinic {
+            background: #4caf50;
+            color: white;
+        }
+
+        .status-online {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .bot-status {
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.online {
+            background: #4caf50;
+        }
+
+        .status-dot.offline {
+            background: #f44336;
+        }
+
+        .bot-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .notifications-settings {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #1e88e5;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .system-tools {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .system-tools .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .system-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 768px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الأطباء - نظام الحجوزات</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard">
+    <header class="dashboard-header">
+        <div class="container">
+            <h1>إدارة الأطباء</h1>
+            <div class="user-info">
+                <span>مرحباً، {{ session.username }}</span>
+                <a href="/logout" class="btn btn-outline">تسجيل الخروج</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <nav>
+                <ul>
+                    <li><a href="/dashboard">نظرة عامة</a></li>
+                    <li><a href="/appointments">إدارة الحجوزات</a></li>
+                    <li class="active"><a href="/doctors">إدارة الأطباء</a></li>
+                    <li><a href="/reports">التقارير</a></li>
+                    <li><a href="/settings">الإعدادات</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="page-header">
+                <h2>إدارة الأطباء</h2>
+                <button class="btn btn-primary" onclick="showAddDoctorModal()">➕ إضافة طبيب جديد</button>
+            </div>
+
+            <div class="stats-grid">
+                {% for stat in doctor_stats %}
+                <div class="stat-card">
+                    <div class="stat-icon">👨‍⚕️</div>
+                    <div class="stat-info">
+                        <h3>د. {{ stat[0] }}</h3>
+                        <p class="stat-number">{{ stat[1] }} حجز</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>اسم الطبيب</th>
+                            <th>التخصص</th>
+                            <th>رقم الهاتف</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>عدد الحجوزات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doctor in doctors %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ doctor[1] }}</td>
+                            <td>{{ doctor[2] }}</td>
+                            <td>{{ doctor[3] or '-' }}</td>
+                            <td>{{ doctor[4] or '-' }}</td>
+                            <td>
+                                {% for stat in doctor_stats %}
+                                    {% if stat[0] == doctor[1] %}
+                                        {{ stat[1] }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <button class="btn btn-sm btn-primary" onclick="editDoctor('{{ doctor[0] }}')">تعديل</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteDoctor('{{ doctor[0] }}')">حذف</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal إضافة طبيب جديد -->
+    <div id="addDoctorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>إضافة طبيب جديد</h3>
+                <span class="close" onclick="closeAddDoctorModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addDoctorForm">
+                    <div class="form-group">
+                        <label for="doctor_name">اسم الطبيب *</label>
+                        <input type="text" id="doctor_name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="specialty">التخصص *</label>
+                        <input type="text" id="specialty" name="specialty" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">رقم الهاتف</label>
+                        <input type="tel" id="phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">البريد الإلكتروني</label>
+                        <input type="email" id="email" name="email">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddDoctorModal()">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="addDoctor()">حفظ الطبيب</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // دالة لعرض modal إضافة طبيب
+        function showAddDoctorModal() {
+            document.getElementById('addDoctorModal').style.display = 'block';
+        }
+
+        // دالة لإغلاق modal إضافة طبيب
+        function closeAddDoctorModal() {
+            document.getElementById('addDoctorModal').style.display = 'none';
+            document.getElementById('addDoctorForm').reset();
+        }
+    </script>
+</body>
+</html>

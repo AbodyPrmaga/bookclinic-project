@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - نظام العيادات المتعدد</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard">
+    <header class="dashboard-header">
+        <div class="container">
+            <h1>لوحة التحكم</h1>
+            <div class="user-info">
+                <span>
+                    مرحباً، {{ session.username }} 
+                    {% if session.role == 'admin' %}
+                    <span class="badge badge-admin">👑 مسؤول</span>
+                    {% else %}
+                    <span class="badge badge-clinic">💊 عيادة</span>
+                    {% endif %}
+                </span>
+                <a href="/logout" class="btn btn-outline">تسجيل الخروج</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <nav>
+                <ul>
+                    <li class="active"><a href="/dashboard">نظرة عامة</a></li>
+                    <li><a href="/appointments">إدارة الحجوزات</a></li>
+                    {% if session.role == 'admin' %}
+                    <li><a href="/clinics">إدارة العيادات</a></li>
+                    {% endif %}
+                    <li><a href="/reports">التقارير</a></li>
+                    <li><a href="/settings">الإعدادات</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="welcome-section">
+                <h2>مرحباً بعودتك! 👋</h2>
+                <p>
+                    {% if session.role == 'admin' %}
+                    أنت مسؤول النظام ويمكنك إدارة جميع العيادات والحجوزات
+                    {% else %}
+                    أنت تدير عيادتك الخاصة، هذه نظرة عامة على أداء عيادتك
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-info">
+                        <h3>إجمالي الحجوزات</h3>
+                        <p class="stat-number">{{ total_appointments }}</p>
+                        <span class="stat-trend">إجمالي الحجوزات</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-info">
+                        <h3>حجوزات قيد الانتظار</h3>
+                        <p class="stat-number">{{ pending_appointments }}</p>
+                        <span class="stat-trend">تحتاج إلى مراجعة</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <h3>حجوزات مؤكدة</h3>
+                        <p class="stat-number">{{ confirmed_appointments }}</p>
+                        <span class="stat-trend">تم تأكيدها</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        {% if session.role == 'admin' %}💊{% else %}👨‍⚕️{% endif %}
+                    </div>
+                    <div class="stat-info">
+                        <h3>{% if session.role == 'admin' %}عدد العيادات{% else %}عيادتك{% endif %}</h3>
+                        <p class="stat-number">{{ total_clinics }}</p>
+                        <span class="stat-trend">
+                            {% if session.role == 'admin' %}عيادة مسجلة{% else %}عيادة نشطة{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="recent-appointments">
+                    <div class="section-header">
+                        <h3>آخر الحجوزات</h3>
+                        <a href="/appointments" class="btn btn-sm btn-outline">عرض الكل</a>
+                    </div>
+                    <div class="table-container">
+                        {% if recent_appointments %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>رقم الحجز</th>
+                                    <th>اسم المريض</th>
+                                    {% if session.role == 'admin' %}
+                                    <th>العيادة</th>
+                                    {% endif %}
+                                    <th>التاريخ</th>
+                                    <th>الوقت</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in recent_appointments %}
+                                <tr>
+                                    <td>#{{ appointment[0] }}</td>
+                                    <td>{{ appointment[1] }}</td>
+                                    {% if session.role == 'admin' %}
+                                    <td>{{ appointment[3] }}</td>
+                                    {% endif %}
+                                    <td>{{ appointment[4] }}</td>
+                                    <td>{{ appointment[5] }}</td>
+                                    <td>
+                                        <span class="status status-{{ appointment[6] }}">
+                                            {% if appointment[6] == 'pending' %}⏳ قيد الانتظار
+                                            {% elif appointment[6] == 'confirmed' %}✅ مؤكد
+                                            {% else %}❌ ملغى{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="empty-state">
+                            <p>لا توجد حجوزات حديثة</p>
+                            <a href="/appointments" class="btn btn-primary">إدارة الحجوزات</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <div class="section-header">
+                        <h3>إجراءات سريعة</h3>
+                    </div>
+                    <div class="actions-grid">
+                        <a href="/appointments" class="action-card">
+                            <div class="action-icon">📅</div>
+                            <div class="action-text">
+                                <h4>إدارة الحجوزات</h4>
+                                <p>عرض وتعديل الحجوزات</p>
+                            </div>
+                        </a>
+                        
+                        {% if session.role == 'admin' %}
+                        <a href="/clinics" class="action-card">
+                            <div class="action-icon">💊</div>
+                            <div class="action-text">
+                                <h4>إدارة العيادات</h4>
+                                <p>إضافة وعرض العيادات</p>
+                            </div>
+                        </a>
+                        {% endif %}
+                        
+                        <a href="/reports" class="action-card">
+                            <div class="action-icon">📊</div>
+                            <div class="action-text">
+                                <h4>التقارير</h4>
+                                <p>عرض الإحصائيات والتقارير</p>
+                            </div>
+                        </a>
+                        
+                        <a href="/settings" class="action-card">
+                            <div class="action-icon">⚙️</div>
+                            <div class="action-text">
+                                <h4>الإعدادات</h4>
+                                <p>تعديل إعدادات الحساب</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <style>
+        .welcome-section {
+            background: linear-gradient(135deg, #1e88e5, #0d47a1);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .welcome-section h2 {
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-section p {
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+
+        .badge-admin {
+            background: #ff9800;
+            color: white;
+        }
+
+        .badge-clinic {
+            background: #4caf50;
+            color: white;
+        }
+
+        .stat-trend {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .section-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .recent-appointments,
+        .quick-actions {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .actions-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .action-card {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .action-card:hover {
+            border-color: #1e88e5;
+            transform: translateY(-2px);
+        }
+
+        .action-icon {
+            font-size: 2rem;
+            margin-left: 1rem;
+        }
+
+        .action-text h4 {
+            margin: 0 0 0.3rem 0;
+            color: #333;
+        }
+
+        .action-text p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</body>
+</html>

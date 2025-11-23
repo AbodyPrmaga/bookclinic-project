@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة العيادات - نظام الحجوزات</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard">
+    <header class="dashboard-header">
+        <div class="container">
+            <h1>إدارة العيادات</h1>
+            <div class="user-info">
+                <span>مرحباً، {{ session.username }}</span>
+                <a href="/logout" class="btn btn-outline">تسجيل الخروج</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <nav>
+                <ul>
+                    <li><a href="/dashboard">نظرة عامة</a></li>
+                    <li><a href="/appointments">إدارة الحجوزات</a></li>
+                    {% if session.role == 'admin' %}
+                    <li class="active"><a href="/clinics">إدارة العيادات</a></li>
+                    {% endif %}
+                    <li><a href="/reports">التقارير</a></li>
+                    <li><a href="/settings">الإعدادات</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="page-header">
+                <h2>إدارة العيادات</h2>
+                <button class="btn btn-primary" onclick="showAddClinicModal()">➕ إضافة عيادة جديدة</button>
+            </div>
+
+            <div class="stats-grid">
+                {% for stat in clinic_stats %}
+                <div class="stat-card">
+                    <div class="stat-icon">💊</div>
+                    <div class="stat-info">
+                        <h3>{{ stat[0] }}</h3>
+                        <p class="stat-number">{{ stat[1] }} حجز</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>اسم الطبيب</th>
+                            <th>التخصص</th>
+                            <th>رقم الهاتف</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>العنوان</th>
+                            <th>عدد الحجوزات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for clinic in clinics %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ clinic[1] }}</td>
+                            <td>{{ clinic[2] }}</td>
+                            <td>{{ clinic[3] or '-' }}</td>
+                            <td>{{ clinic[4] or '-' }}</td>
+                            <td>{{ clinic[5] or '-' }}</td>
+                            <td>
+                                {% for stat in clinic_stats %}
+                                    {% if stat[0] == clinic[1] %}
+                                        {{ stat[1] }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <button class="btn btn-sm btn-primary" onclick="editClinic('{{ clinic[0] }}')">تعديل</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteClinic('{{ clinic[0] }}')">حذف</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal إضافة عيادة جديدة -->
+    <div id="addClinicModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>إضافة عيادة جديدة</h3>
+                <span class="close" onclick="closeAddClinicModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addClinicForm">
+                    <div class="form-group">
+                        <label for="doctor_name">اسم الطبيب *</label>
+                        <input type="text" id="doctor_name" name="doctor_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="specialty">التخصص *</label>
+                        <input type="text" id="specialty" name="specialty" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">رقم الهاتف</label>
+                        <input type="tel" id="phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">البريد الإلكتروني</label>
+                        <input type="email" id="email" name="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">العنوان</label>
+                        <textarea id="address" name="address" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="working_hours">أوقات العمل</label>
+                        <input type="text" id="working_hours" name="working_hours" placeholder="من السبت إلى الخميس - 9 صباحاً إلى 5 مساءً">
+                    </div>
+                    <div class="form-group">
+                        <label for="username">اسم المستخدم *</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">كلمة المرور *</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddClinicModal()">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="addClinic()">حفظ العيادة</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // دالة لعرض modal إضافة عيادة
+        function showAddClinicModal() {
+            document.getElementById('addClinicModal').style.display = 'block';
+        }
+
+        // دالة لإغلاق modal إضافة عيادة
+        function closeAddClinicModal() {
+            document.getElementById('addClinicModal').style.display = 'none';
+            document.getElementById('addClinicForm').reset();
+        }
+
+        // دالة لإضافة عيادة جديدة
+        async function addClinic() {
+            const form = document.getElementById('addClinicForm');
+            const formData = new FormData(form);
+            
+            const doctorName = formData.get('doctor_name');
+            const specialty = formData.get('specialty');
+            const username = formData.get('username');
+            const password = formData.get('password');
+            
+            if (!doctorName || !specialty || !username || !password) {
+                alert('❌ الرجاء ملء الحقول المطلوبة');
+                return;
+            }
+            
+            const clinicData = {
+                doctor_name: doctorName,
+                specialty: specialty,
+                phone: formData.get('phone'),
+                email: formData.get('email'),
+                address: formData.get('address'),
+                working_hours: formData.get('working_hours'),
+                username: username,
+                password: password
+            };
+            
+            try {
+                const response = await fetch('/api/clinics', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(clinicData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ تم إضافة العيادة بنجاح');
+                    closeAddClinicModal();
+                    location.reload();
+                } else {
+                    alert('❌ حدث خطأ أثناء إضافة العيادة: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error adding clinic:', error);
+                alert('❌ حدث خطأ أثناء إضافة العيادة');
+            }
+        }
+
+        // دالة لحذف عيادة
+        async function deleteClinic(clinicId) {
+            if (confirm('هل أنت متأكد من حذف هذه العيادة؟ سيتم حذف جميع الحجوزات المرتبطة بها.')) {
+                try {
+                    const response = await fetch('/api/clinics/' + clinicId, {
+                        method: 'DELETE'
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('✅ تم حذف العيادة بنجاح');
+                        location.reload();
+                    } else {
+                        alert('❌ حدث خطأ أثناء حذف العيادة');
+                    }
+                } catch (error) {
+                    console.error('Error deleting clinic:', error);
+                    alert('❌ حدث خطأ أثناء حذف العيادة');
+                }
+            }
+        }
+
+        // دالة لتعديل عيادة (يمكن تطويرها لاحقاً)
+        function editClinic(clinicId) {
+            alert('ميزة التعديل قيد التطوير...');
+        }
+    </script>
+</body>
+</html>

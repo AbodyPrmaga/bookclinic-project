@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الحجوزات - نظام العيادات المتعدد</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<script>
+    // دالة لعرض modal إضافة حجز
+    function showAddAppointmentModal() {
+        // التحقق من وجود حقل clinic_id لتحديد إذا كان المستخدم مسؤولاً
+        const clinicSelect = document.getElementById('clinic_id');
+        
+        if (clinicSelect) {
+            // إذا كان هناك حقل clinic_id، إذن المستخدم مسؤول ويجب تحميل العيادات
+            loadClinics().then(() => {
+                document.getElementById('addAppointmentModal').style.display = 'block';
+            }).catch(error => {
+                console.error('Error loading clinics:', error);
+                document.getElementById('addAppointmentModal').style.display = 'block';
+            });
+        } else {
+            // إذا لم يكن هناك حقل clinic_id، إذن المستخدم عيادة
+            document.getElementById('addAppointmentModal').style.display = 'block';
+        }
+        
+        // تعيين تاريخ اليوم كحد أدنى
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('appointment_date');
+        if (dateInput) {
+            dateInput.min = today;
+        }
+    }
+
+    // دالة لإغلاق modal إضافة حجز
+    function closeAddAppointmentModal() {
+        document.getElementById('addAppointmentModal').style.display = 'none';
+        const form = document.getElementById('addAppointmentForm');
+        if (form) {
+            form.reset();
+        }
+    }
+
+    // دالة لتحميل العيادات في select
+    async function loadClinics() {
+        try {
+            const response = await fetch('/api/clinics');
+            const clinics = await response.json();
+            
+            const select = document.getElementById('clinic_id');
+            if (select) {
+                select.innerHTML = '<option value="">اختر العيادة</option>';
+                
+                clinics.forEach(function(clinic) {
+                    const option = document.createElement('option');
+                    option.value = clinic.id;
+                    option.textContent = clinic.name + ' - ' + clinic.specialty;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading clinics:', error);
+            alert('❌ حدث خطأ في تحميل قائمة العيادات');
+        }
+    }
+
+    // دالة لإضافة حجز جديد
+    async function addAppointment() {
+        const form = document.getElementById('addAppointmentForm');
+        if (!form) return;
+        
+        const formData = new FormData(form);
+        
+        // التحقق من الحقول المطلوبة
+        const patientName = formData.get('patient_name');
+        const patientPhone = formData.get('patient_phone');
+        const appointmentDate = formData.get('appointment_date');
+        const appointmentTime = formData.get('appointment_time');
+        
+        if (!patientName || !patientPhone || !appointmentDate || !appointmentTime) {
+            alert('❌ الرجاء ملء جميع الحقول المطلوبة');
+            return;
+        }
+        
+        // تحديد clinic_id
+        let clinicId;
+        const clinicSelect = document.getElementById('clinic_id');
+        if (clinicSelect) {
+            clinicId = formData.get('clinic_id');
+            if (!clinicId) {
+                alert('❌ الرجاء اختيار العيادة');
+                return;
+            }
+        } else {
+            // للمستخدمين العاديين (عيادات)، نستخدم قيمة ثابتة أو نتركها للخادم
+            clinicId = null; // سيعالجها الخادم بناءً على جلسة المستخدم
+        }
+        
+        const appointmentData = {
+            patient_name: patientName,
+            patient_phone: patientPhone,
+            appointment_date: appointmentDate,
+            appointment_time: appointmentTime,
+            notes: formData.get('notes')
+        };
+        
+        // إضافة clinic_id فقط إذا كانت موجودة
+        if (clinicId) {
+            appointmentData.clinic_id = clinicId;
+        }
+        
+        try {
+            const response = await fetch('/api/appointments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(appointmentData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ تم إضافة الحجز بنجاح');
+                closeAddAppointmentModal();
+                location.reload();
+            } else {
+                alert('❌ حدث خطأ أثناء إضافة الحجز');
+            }
+        } catch (error) {
+            console.error('Error adding appointment:', error);
+            alert('❌ حدث خطأ أثناء إضافة الحجز');
+        }
+    }
+
+    // دالة لتحديث حالة الحجز
+    async function updateAppointmentStatus(appointmentId, status) {
+        const statusText = status === 'confirmed' ? 'تأكيد' : 'إلغاء';
+        
+        if (confirm(`هل تريد ${statusText} هذا الحجز؟`)) {
+            try {
+                const response = await fetch('/api/appointments/' + appointmentId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: status })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ تم ${statusText} الحجز بنجاح`);
+                    location.reload();
+                } else {
+                    alert('❌ حدث خطأ أثناء تحديث حالة الحجز');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ حدث خطأ أثناء تحديث حالة الحجز');
+            }
+        }
+    }
+
+    // دالة لتصفية الحجوزات
+    function filterAppointments() {
+        const status = document.getElementById('statusFilter').value;
+        window.location.href = '/appointments?status=' + status;
+    }
+
+    // دالة لتعديل الحجز
+    function editAppointment(appointmentId) {
+        alert('ميزة التعديل قيد التطوير...');
+    }
+
+    // عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('appointment_date');
+        if (dateInput) {
+            dateInput.min = today;
+        }
+    });
+
+    
+    // دالة لإضافة حجز جديد
+async function addAppointment() {
+    const form = document.getElementById('addAppointmentForm');
+    if (!form) return;
+    
+    const formData = new FormData(form);
+    
+    // التحقق من الحقول المطلوبة
+    const patientName = formData.get('patient_name');
+    const patientPhone = formData.get('patient_phone');
+    const appointmentDate = formData.get('appointment_date');
+    const appointmentTime = formData.get('appointment_time');
+    
+    if (!patientName || !patientPhone || !appointmentDate || !appointmentTime) {
+        alert('❌ الرجاء ملء جميع الحقول المطلوبة');
+        return;
+    }
+    
+    // بناء بيانات الحجز
+    const appointmentData = {
+        patient_name: patientName,
+        patient_phone: patientPhone,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        notes: formData.get('notes') || ''
+    };
+    
+    // إضافة clinic_id فقط إذا كان المستخدم مسؤولاً واختار عيادة
+    const clinicSelect = document.getElementById('clinic_id');
+    if (clinicSelect) {
+        const clinicId = formData.get('clinic_id');
+        if (!clinicId) {
+            alert('❌ الرجاء اختيار العيادة');
+            return;
+        }
+        appointmentData.clinic_id = clinicId;
+    }
+    // إذا كان المستخدم عيادة، لا نرسل clinic_id وسيأخذها الخادم من الجلسة
+    
+    try {
+        const response = await fetch('/api/appointments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(appointmentData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ تم إضافة الحجز بنجاح');
+            closeAddAppointmentModal();
+            location.reload();
+        } else {
+            alert('❌ حدث خطأ أثناء إضافة الحجز');
+        }
+    } catch (error) {
+        console.error('Error adding appointment:', error);
+        alert('❌ حدث خطأ أثناء إضافة الحجز');
+    }
+}
+
+</script>
+
+<body class="dashboard">
+    <header class="dashboard-header">
+        <div class="container">
+            <h1>إدارة الحجوزات</h1>
+            <div class="user-info">
+                <span>
+                    مرحباً، {{ session.username }}
+                    {% if session.role == 'admin' %}
+                    <span class="badge badge-admin">👑 مسؤول</span>
+                    {% else %}
+                    <span class="badge badge-clinic">💊 عيادة</span>
+                    {% endif %}
+                </span>
+                <a href="/logout" class="btn btn-outline">تسجيل الخروج</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <nav>
+                <ul>
+                    <li><a href="/dashboard">نظرة عامة</a></li>
+                    <li class="active"><a href="/appointments">إدارة الحجوزات</a></li>
+                    {% if session.role == 'admin' %}
+                    <li><a href="/clinics">إدارة العيادات</a></li>
+                    {% endif %}
+                    <li><a href="/reports">التقارير</a></li>
+                    <li><a href="/settings">الإعدادات</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="page-header">
+                <h2>إدارة الحجوزات</h2>
+                <div class="header-actions">
+                    <div class="filters">
+                        <select id="statusFilter" onchange="filterAppointments()">
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>جميع الحجوزات</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>مؤكدة</option>
+                            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ملغية</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="showAddAppointmentModal()">➕ حجز جديد</button>
+                </div>
+            </div>
+
+            <!-- إحصائيات سريعة -->
+            <div class="stats-grid">
+                {% for stat in status_stats %}
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        {% if stat[0] == 'pending' %}⏳
+                        {% elif stat[0] == 'confirmed' %}✅
+                        {% else %}❌{% endif %}
+                    </div>
+                    <div class="stat-info">
+                        <h3>
+                            {% if stat[0] == 'pending' %}قيد الانتظار
+                            {% elif stat[0] == 'confirmed' %}مؤكدة
+                            {% else %}ملغية{% endif %}
+                        </h3>
+                        <p class="stat-number">{{ stat[1] }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>اسم المريض</th>
+                            <th>رقم الهاتف</th>
+                            {% if session.role == 'admin' %}
+                            <th>العيادة</th>
+                            {% endif %}
+                            <th>التاريخ</th>
+                            <th>الوقت</th>
+                            <th>الحالة</th>
+                            <th>ملاحظات</th>
+                            <th>تاريخ الإنشاء</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in appointments %}
+                        <tr>
+                            <td>{{ appointment[0] }}</td>
+                            <td>{{ appointment[1] }}</td>
+                            <td>{{ appointment[2] }}</td>
+                            {% if session.role == 'admin' %}
+                            <td>{{ appointment[3] }}</td>
+                            {% endif %}
+                            <td>{{ appointment[4] }}</td>
+                            <td>{{ appointment[5] }}</td>
+                            <td>
+                                <span class="status status-{{ appointment[6] }}">
+                                    {% if appointment[6] == 'pending' %}⏳ قيد الانتظار
+                                    {% elif appointment[6] == 'confirmed' %}✅ مؤكد
+                                    {% else %}❌ ملغى{% endif %}
+                                </span>
+                            </td>
+                            <td>{{ appointment[7] or '-' }}</td>
+                            <td>{{ appointment[8] }}</td>
+                            <td>
+                                <div class="actions">
+                                    {% if appointment[6] == 'pending' %}
+                                    <button class="btn btn-sm btn-success" onclick="updateAppointmentStatus('{{ appointment[0] }}', 'confirmed')">تأكيد</button>
+                                    {% endif %}
+                                    {% if appointment[6] != 'cancelled' %}
+                                    <button class="btn btn-sm btn-danger" onclick="updateAppointmentStatus('{{ appointment[0] }}', 'cancelled')">إلغاء</button>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-secondary" onclick="editAppointment('{{ appointment[0] }}')">تعديل</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{% if session.role == 'admin' %}10{% else %}9{% endif %}" class="text-center">
+                                <div class="empty-state">
+                                    <p>لا توجد حجوزات</p>
+                                    <button class="btn btn-primary" onclick="showAddAppointmentModal()">إضافة حجز جديد</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal إضافة حجز جديد -->
+    <div id="addAppointmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>إضافة حجز جديد</h3>
+                <span class="close" onclick="closeAddAppointmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addAppointmentForm">
+                    <div class="form-group">
+                        <label for="patient_name">اسم المريض *</label>
+                        <input type="text" id="patient_name" name="patient_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="patient_phone">رقم الهاتف *</label>
+                        <input type="tel" id="patient_phone" name="patient_phone" required>
+                    </div>
+                    {% if session.role == 'admin' %}
+                    <div class="form-group">
+                        <label for="clinic_id">العيادة *</label>
+                        <select id="clinic_id" name="clinic_id" required>
+                            <option value="">اختر العيادة</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="form-group">
+                        <label for="appointment_date">التاريخ *</label>
+                        <input type="date" id="appointment_date" name="appointment_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="appointment_time">الوقت *</label>
+                        <input type="time" id="appointment_time" name="appointment_time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">ملاحظات</label>
+                        <textarea id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddAppointmentModal()">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="addAppointment()">حفظ الحجز</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // دالة لعرض modal إضافة حجز
+        function showAddAppointmentModal() {
+            // تحميل العيادات فقط إذا كان المستخدم مسؤولاً
+            {% if session.role == 'admin' %}
+            loadClinics().then(() => {
+                document.getElementById('addAppointmentModal').style.display = 'block';
+            }).catch(error => {
+                console.error('Error loading clinics:', error);
+                document.getElementById('addAppointmentModal').style.display = 'block';
+            });
+            {% else %}
+            document.getElementById('addAppointmentModal').style.display = 'block';
+            {% endif %}
+            
+            // تعيين تاريخ اليوم كحد أدنى
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointment_date').min = today;
+        }
+
+        // دالة لإغلاق modal إضافة حجز
+        function closeAddAppointmentModal() {
+            document.getElementById('addAppointmentModal').style.display = 'none';
+            document.getElementById('addAppointmentForm').reset();
+        }
+
+        // دالة لتحديث حالة الحجز
+        async function updateAppointmentStatus(appointmentId, status) {
+            const statusText = status === 'confirmed' ? 'تأكيد' : 'إلغاء';
+            
+            if (confirm(`هل تريد ${statusText} هذا الحجز؟`)) {
+                try {
+                    const response = await fetch('/api/appointments/' + appointmentId, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ status: status })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert(`✅ تم ${statusText} الحجز بنجاح`);
+                        location.reload();
+                    } else {
+                        alert('❌ حدث خطأ أثناء تحديث حالة الحجز');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('❌ حدث خطأ أثناء تحديث حالة الحجز');
+                }
+            }
+        }
+
+        // دالة لتصفية الحجوزات
+        function filterAppointments() {
+            const status = document.getElementById('statusFilter').value;
+            window.location.href = '/appointments?status=' + status;
+        }
+
+        // دالة لتعديل الحجز (يمكن تطويرها لاحقاً)
+        function editAppointment(appointmentId) {
+            alert('ميزة التعديل قيد التطوير...');
+        }
+
+        // عند تحميل الصفحة، تعيين تاريخ اليوم كحد أدنى لتاريخ الحجز
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('appointment_date');
+            if (dateInput) {
+                dateInput.min = today;
+            }
+        });
+    </script>
+
+    <style>
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+
+        .badge-admin {
+            background: #ff9800;
+            color: white;
+        }
+
+        .badge-clinic {
+            background: #4caf50;
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .empty-state p {
+            margin-bottom: 1rem;
+        }
+    </style>
+</body>
+</html>

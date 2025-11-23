@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - نظام العيادات المتعدد</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-form">
+            <div class="login-header">
+                <h1>تسجيل الدخول</h1>
+                <p>نظام إدارة العيادات الطبية المتعدد</p>
+            </div>
+            
+            {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+            {% endif %}
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">اسم المستخدم</label>
+                    <input type="text" id="username" name="username" required placeholder="أدخل اسم المستخدم">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">كلمة المرور</label>
+                    <input type="password" id="password" name="password" required placeholder="أدخل كلمة المرور">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">تسجيل الدخول</button>
+            </form>
+            
+            <div class="login-links">
+                <a href="/">العودة للرئيسية</a>
+                <span class="separator">|</span>
+                <a href="#" onclick="showDemoAccounts()">الحسابات التجريبية</a>
+            </div>
+
+            <div class="demo-accounts" id="demoAccounts" style="display: none; margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                <h4>الحسابات التجريبية:</h4>
+                <div class="account-item">
+                    <strong>المسؤول:</strong> admin / admin123
+                </div>
+                <div class="account-item">
+                    <strong>عيادة د. أحمد:</strong> ahmed / ahmed123
+                </div>
+                <div class="account-item">
+                    <strong>عيادة د. سارة:</strong> sara / sara123
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showDemoAccounts() {
+            const demoAccounts = document.getElementById('demoAccounts');
+            demoAccounts.style.display = demoAccounts.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+
+    <style>
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            color: #1e88e5;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .btn-block {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .login-links {
+            text-align: center;
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .separator {
+            color: #ccc;
+        }
+
+        .demo-accounts h4 {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .account-item {
+            padding: 0.3rem 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام حجز المواعيد الطبية - متعدد العيادات MediBook</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>نظام حجز المواعيد الطبية المتعدد</h1>
+            <p>إدارة الحجوزات لعدة عيادات طبية عبر منصة واحدة</p>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>حجز المواعيد الطبية أصبح أسهل</h2>
+                <p>منصة متكاملة لإدارة عيادات متعددة، كل عيادة لها حسابها المستقل وإحصائياتها الخاصة</p>
+                <div class="buttons">
+                    <a href="/login" class="btn btn-primary">دخول العيادات</a>
+                    <a href="https://t.me/HaGzTeleBot" class="btn btn-secondary">بوت التيليجرام</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img src="https://cdn-icons-png.flaticon.com/512/2964/2964518.png" alt="Medical Appointment System">
+            </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="container">
+            <h2>مميزات النظام المتعدد</h2>
+            <div class="features-grid">
+                <div class="feature">
+                    <div class="icon">💊</div>
+                    <h3>متعدد العيادات</h3>
+                    <p>إدارة عدة عيادات طبية من منصة واحدة مع عزل البيانات</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">👨‍⚕️</div>
+                    <h3>حسابات مستقلة</h3>
+                    <p>كل طبيب/عيادة له حساب مستقل ولوحة تحكم خاصة</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">📊</div>
+                    <h3>تقارير منفصلة</h3>
+                    <p>تقارير شاملة للمسؤول وتقارير خاصة بكل عيادة</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">🔐</div>
+                    <h3>صلاحيات مرنة</h3>
+                    <p>نظام صلاحيات متكامل للمسؤولين والعيادات</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">🤖</div>
+                    <h3>روبوت تيليجرام</h3>
+                    <p>حجز المواعيد بسهولة عبر تطبيق تيليجرام</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">📱</div>
+                    <h3>واجهة متجاوبة</h3>
+                    <p>تصميم عصري يعمل على جميع الأجهزة</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="clinics-preview">
+        <div class="container">
+            <h2>العيادات المسجلة في النظام</h2>
+            <div class="clinics-grid">
+                <div class="clinic-card">
+                    <h3>عيادة د. أحمد محمد</h3>
+                    <p>📋 التخصص: طب عام</p>
+                    <p>📞 الهاتف: 0551234567</p>
+                    <p>⏰ أوقات العمل: من السبت إلى الخميس - 9 صباحاً إلى 5 مساءً</p>
+                </div>
+                <div class="clinic-card">
+                    <h3>عيادة د. سارة خالد</h3>
+                    <p>📋 التخصص: أسنان</p>
+                    <p>📞 الهاتف: 0551234568</p>
+                    <p>⏰ أوقات العمل: من الأحد إلى الخميس - 10 صباحاً إلى 6 مساءً</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 نظام إدارة الحجوزات الطبية المتعدد. جميع الحقوق محفوظة.</p>
+        </div>
+    </footer>
+
+    <style>
+        .clinics-preview {
+            padding: 4rem 0;
+            background: white;
+        }
+
+        .clinics-preview h2 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 3rem;
+            color: #333;
+        }
+
+        .clinics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .clinic-card {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            border-left: 4px solid #1e88e5;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .clinic-card h3 {
+            color: #1e88e5;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.5rem;
+        }
+
+        .clinic-card p {
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+    </style>
+</body>
+</html>
