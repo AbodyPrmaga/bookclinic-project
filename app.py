@@ -85,9 +85,9 @@ def init_db():
         
         conn.commit()
         conn.close()
-        logging.info("✅ تم تهيئة قاعدة البيانات بنجاح")
+        logging.info("✅ Done INIT PASS IN")
     except Exception as e:
-        logging.error(f"❌ خطأ في تهيئة قاعدة البيانات: {e}")
+        logging.error(f"❌ ERRoR: {e}")
 
 init_db()
 
@@ -460,28 +460,121 @@ def handle_appointments():
 def handle_appointment(appointment_id):
     if request.method == 'PUT':
         data = request.json
-        status = data.get('status')
-        notes = data.get('notes', '')
-        
         conn = sqlite3.connect('clinic.db')
         c = conn.cursor()
-        if notes:
-            c.execute("UPDATE appointments SET status = ?, notes = ? WHERE id = ?", (status, notes, appointment_id))
-        else:
-            c.execute("UPDATE appointments SET status = ? WHERE id = ?", (status, appointment_id))
-        conn.commit()
-        conn.close()
         
-        return jsonify({'success': True})
+        # التحقق من صلاحية المستخدم
+        user_role = session.get('role')
+        clinic_id = session.get('clinic_id')
+        
+        if user_role == 'clinic':
+            # تأكد أن العيادة يمكنها تعديل حجوزاتها فقط
+            c.execute("SELECT clinic_id FROM appointments WHERE id = ?", (appointment_id,))
+            result = c.fetchone()
+            if not result or result[0] != clinic_id:
+                conn.close()
+                return jsonify({'success': False, 'error': 'غير مصرح لتعديل هذا الحجز'})
+        
+        # بناء استعلام التحديث
+        update_fields = []
+        update_values = []
+        
+        fields_to_update = [
+            ('status', data.get('status')),
+            ('notes', data.get('notes')),
+            ('patient_name', data.get('patient_name')),
+            ('patient_phone', data.get('patient_phone')),
+            ('appointment_date', data.get('appointment_date')),
+            ('appointment_time', data.get('appointment_time'))
+        ]
+        
+        for field, value in fields_to_update:
+            if value is not None:
+                update_fields.append(f"{field} = ?")
+                update_values.append(value)
+        
+        if not update_fields:
+            conn.close()
+            return jsonify({'success': False, 'error': 'لم يتم إرسال بيانات للتحديث'})
+        
+        update_values.append(appointment_id)
+        query = f"UPDATE appointments SET {', '.join(update_fields)} WHERE id = ?"
+        
+        try:
+            c.execute(query, update_values)
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True})
+        except Exception as e:
+            conn.close()
+            return jsonify({'success': False, 'error': str(e)})
     
     elif request.method == 'DELETE':
+        # ... الكود الحالي لحذف الحجز يبقى كما هو ...
         conn = sqlite3.connect('clinic.db')
         c = conn.cursor()
+        
+        # التحقق من صلاحية المستخدم
+        user_role = session.get('role')
+        clinic_id = session.get('clinic_id')
+        
+        if user_role == 'clinic':
+            # تأكد أن العيادة يمكنها حذف حجوزاتها فقط
+            c.execute("SELECT clinic_id FROM appointments WHERE id = ?", (appointment_id,))
+            result = c.fetchone()
+            if not result or result[0] != clinic_id:
+                conn.close()
+                return jsonify({'success': False, 'error': 'غير مصرح لحذف هذا الحجز'})
+        
         c.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
         conn.commit()
         conn.close()
-        
-        return jsonify({'success': True})
+        return jsonify({'success': True})   
+     
+@app.route('/api/appointments/<int:appointment_id>', methods=['GET'])
+def get_appointment(appointment_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'غير مصرح'})
+    
+    user_role = session.get('role')
+    clinic_id = session.get('clinic_id')
+    
+    conn = sqlite3.connect('clinic.db')
+    c = conn.cursor()
+    
+    if user_role == 'admin':
+        c.execute('''SELECT a.id, a.patient_name, a.patient_phone, c.doctor_name, 
+                    a.appointment_date, a.appointment_time, a.status, a.notes, a.clinic_id
+                    FROM appointments a
+                    JOIN clinics c ON a.clinic_id = c.id
+                    WHERE a.id = ?''', (appointment_id,))
+    else:
+        c.execute('''SELECT a.id, a.patient_name, a.patient_phone, c.doctor_name, 
+                    a.appointment_date, a.appointment_time, a.status, a.notes, a.clinic_id
+                    FROM appointments a
+                    JOIN clinics c ON a.clinic_id = c.id
+                    WHERE a.id = ? AND a.clinic_id = ?''', (appointment_id, clinic_id))
+    
+    appointment = c.fetchone()
+    conn.close()
+    
+    if appointment:
+        return jsonify({
+            'success': True,
+            'appointment': {
+                'id': appointment[0],
+                'patient_name': appointment[1],
+                'patient_phone': appointment[2],
+                'clinic_name': appointment[3],
+                'appointment_date': appointment[4],
+                'appointment_time': appointment[5],
+                'status': appointment[6],
+                'notes': appointment[7],
+                'clinic_id': appointment[8]
+            }
+        })
+    else:
+        return jsonify({'success': False, 'error': 'الحجز غير موجود'})
 
 @app.route('/api/clinics', methods=['POST'])
 def add_clinic():
@@ -561,32 +654,41 @@ def handle_clinic(clinic_id):
         
         return jsonify({'success': True})
 
+@app.route('/api/change-password', methods=['POST'])
+def change_password():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'غير مصرح'})
+    
+    data = request.json
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    
+    conn = sqlite3.connect('clinic.db')
+    c = conn.cursor()
+    
+    # التحقق من كلمة المرور الحالية
+    c.execute("SELECT password FROM users WHERE id = ?", (session['user_id'],))
+    user = c.fetchone()
+    
+    if not user or user[0] != current_password:
+        conn.close()
+        return jsonify({'success': False, 'error': 'كلمة المرور الحالية غير صحيحة'})
+    
+    # تحديث كلمة المرور
+    c.execute("UPDATE users SET password = ? WHERE id = ?", (new_password, session['user_id']))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True})
+
+
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('index'))
 
-def start_bot_safely():
-    """تشغيل البوت بطريقة آمنة مع التعامل مع الأخطاء"""
-    try:
-        from telebot_handler import run_bot
-        logging.info("🚀 محاولة تشغيل روبوت تيليجرام...")
-        
-        # الانتظار قليلاً قبل البدء
-        time.sleep(2)
-        
-        bot_thread = threading.Thread(target=run_bot)
-        bot_thread.daemon = True
-        bot_thread.start()
-        logging.info("✅ تم بدء خيط البوت بنجاح")
-        
-    except Exception as e:
-        logging.error(f"❌ فشل في تشغيل البوت: {e}")
-        logging.info("⚠️  التطبيق سيعمل بدون البوت - الواجهة الأمامية فقط")
 
 if __name__ == '__main__':
-    # تشغيل البوت في خيط منفصل
-    start_bot_safely()
-    
+
     # تشغيل تطبيق Flask
     app.run(debug=True, use_reloader=False)

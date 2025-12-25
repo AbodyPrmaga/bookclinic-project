@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
+
 <body class="dashboard">
     <header class="dashboard-header">
         <div class="container">
@@ -75,7 +77,8 @@
                             <label for="working_hours">أوقات العمل</label>
                             <input type="text" id="working_hours" value="{{ clinic_info[6] or 'غير محدد' }}" readonly>
                         </div>
-                        <button type="button" class="btn btn-secondary" onclick="enableClinicEditing()">طلب تعديل المعلومات</button>
+                        <button type="button" class="btn btn-secondary" onclick="enableClinicEditing()">طلب تعديل
+                            المعلومات</button>
                     </form>
                 </div>
                 {% endif %}
@@ -100,7 +103,8 @@
                             <label for="confirm_password">تأكيد كلمة المرور</label>
                             <input type="password" id="confirm_password">
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="changePassword()">تغيير كلمة المرور</button>
+                        <button type="button" class="btn btn-primary" onclick="changePassword()">تغيير كلمة
+                            المرور</button>
                     </form>
                 </div>
 
@@ -163,7 +167,7 @@
             alert('⚠️ لتعديل معلومات العيادة، يرجى التواصل مع مسؤول النظام');
         }
 
-        function changePassword() {
+        async function changePassword() {
             const currentPassword = document.getElementById('current_password').value;
             const newPassword = document.getElementById('new_password').value;
             const confirmPassword = document.getElementById('confirm_password').value;
@@ -178,17 +182,39 @@
                 return;
             }
 
-            if (newPassword.length < 6) {
-                alert('❌ كلمة المرور يجب أن تكون至少 6 أحرف');
+            if (newPassword.length < 4) {
+                alert('❌ كلمة المرور يجب أن تكون 4 أحرف على الأقل');
                 return;
             }
 
-            alert('✅ تم تغيير كلمة المرور بنجاح');
-            document.getElementById('current_password').value = '';
-            document.getElementById('new_password').value = '';
-            document.getElementById('confirm_password').value = '';
-        }
+            try {
+                const response = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
 
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ تم تغيير كلمة المرور بنجاح');
+                    document.getElementById('current_password').value = '';
+                    document.getElementById('new_password').value = '';
+                    document.getElementById('confirm_password').value = '';
+                } else {
+                    alert('❌ ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                alert('❌ حدث خطأ أثناء تغيير كلمة المرور');
+            }
+        }
+        
         function backupDatabase() {
             alert('📦 جاري إنشاء نسخة احتياطية...');
             setTimeout(() => {
@@ -225,7 +251,7 @@
             background: white;
             padding: 1.5rem;
             border-radius: 10px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
         }
 
         .settings-card h3 {
@@ -338,11 +364,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: #1e88e5;
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(26px);
         }
 
@@ -382,4 +408,5 @@
         }
     </style>
 </body>
+
 </html>

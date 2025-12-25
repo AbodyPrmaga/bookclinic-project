@@ -112,6 +112,9 @@ header p {
     background: transparent;
     color: white;
     border: 1px solid white;
+    margin:0 15px;
+    border-radius: 25px;
+    padding: 7px 5px;
 }
 
 .btn-outline:hover {
@@ -478,7 +481,7 @@ th {
 
 .modal-content {
     background-color: white;
-    margin: 5% auto;
+    margin: 1% auto;
     padding: 0;
     border-radius: 10px;
     width: 90%;

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,255 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 
-<script>
-    // دالة لعرض modal إضافة حجز
-    function showAddAppointmentModal() {
-        // التحقق من وجود حقل clinic_id لتحديد إذا كان المستخدم مسؤولاً
-        const clinicSelect = document.getElementById('clinic_id');
-        
-        if (clinicSelect) {
-            // إذا كان هناك حقل clinic_id، إذن المستخدم مسؤول ويجب تحميل العيادات
-            loadClinics().then(() => {
-                document.getElementById('addAppointmentModal').style.display = 'block';
-            }).catch(error => {
-                console.error('Error loading clinics:', error);
-                document.getElementById('addAppointmentModal').style.display = 'block';
-            });
-        } else {
-            // إذا لم يكن هناك حقل clinic_id، إذن المستخدم عيادة
-            document.getElementById('addAppointmentModal').style.display = 'block';
-        }
-        
-        // تعيين تاريخ اليوم كحد أدنى
-        const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('appointment_date');
-        if (dateInput) {
-            dateInput.min = today;
-        }
-    }
-
-    // دالة لإغلاق modal إضافة حجز
-    function closeAddAppointmentModal() {
-        document.getElementById('addAppointmentModal').style.display = 'none';
-        const form = document.getElementById('addAppointmentForm');
-        if (form) {
-            form.reset();
-        }
-    }
-
-    // دالة لتحميل العيادات في select
-    async function loadClinics() {
-        try {
-            const response = await fetch('/api/clinics');
-            const clinics = await response.json();
-            
-            const select = document.getElementById('clinic_id');
-            if (select) {
-                select.innerHTML = '<option value="">اختر العيادة</option>';
-                
-                clinics.forEach(function(clinic) {
-                    const option = document.createElement('option');
-                    option.value = clinic.id;
-                    option.textContent = clinic.name + ' - ' + clinic.specialty;
-                    select.appendChild(option);
-                });
-            }
-        } catch (error) {
-            console.error('Error loading clinics:', error);
-            alert('❌ حدث خطأ في تحميل قائمة العيادات');
-        }
-    }
-
-    // دالة لإضافة حجز جديد
-    async function addAppointment() {
-        const form = document.getElementById('addAppointmentForm');
-        if (!form) return;
-        
-        const formData = new FormData(form);
-        
-        // التحقق من الحقول المطلوبة
-        const patientName = formData.get('patient_name');
-        const patientPhone = formData.get('patient_phone');
-        const appointmentDate = formData.get('appointment_date');
-        const appointmentTime = formData.get('appointment_time');
-        
-        if (!patientName || !patientPhone || !appointmentDate || !appointmentTime) {
-            alert('❌ الرجاء ملء جميع الحقول المطلوبة');
-            return;
-        }
-        
-        // تحديد clinic_id
-        let clinicId;
-        const clinicSelect = document.getElementById('clinic_id');
-        if (clinicSelect) {
-            clinicId = formData.get('clinic_id');
-            if (!clinicId) {
-                alert('❌ الرجاء اختيار العيادة');
-                return;
-            }
-        } else {
-            // للمستخدمين العاديين (عيادات)، نستخدم قيمة ثابتة أو نتركها للخادم
-            clinicId = null; // سيعالجها الخادم بناءً على جلسة المستخدم
-        }
-        
-        const appointmentData = {
-            patient_name: patientName,
-            patient_phone: patientPhone,
-            appointment_date: appointmentDate,
-            appointment_time: appointmentTime,
-            notes: formData.get('notes')
-        };
-        
-        // إضافة clinic_id فقط إذا كانت موجودة
-        if (clinicId) {
-            appointmentData.clinic_id = clinicId;
-        }
-        
-        try {
-            const response = await fetch('/api/appointments', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(appointmentData)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert('✅ تم إضافة الحجز بنجاح');
-                closeAddAppointmentModal();
-                location.reload();
-            } else {
-                alert('❌ حدث خطأ أثناء إضافة الحجز');
-            }
-        } catch (error) {
-            console.error('Error adding appointment:', error);
-            alert('❌ حدث خطأ أثناء إضافة الحجز');
-        }
-    }
-
-    // دالة لتحديث حالة الحجز
-    async function updateAppointmentStatus(appointmentId, status) {
-        const statusText = status === 'confirmed' ? 'تأكيد' : 'إلغاء';
-        
-        if (confirm(`هل تريد ${statusText} هذا الحجز؟`)) {
-            try {
-                const response = await fetch('/api/appointments/' + appointmentId, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ status: status })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert(`✅ تم ${statusText} الحجز بنجاح`);
-                    location.reload();
-                } else {
-                    alert('❌ حدث خطأ أثناء تحديث حالة الحجز');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('❌ حدث خطأ أثناء تحديث حالة الحجز');
-            }
-        }
-    }
-
-    // دالة لتصفية الحجوزات
-    function filterAppointments() {
-        const status = document.getElementById('statusFilter').value;
-        window.location.href = '/appointments?status=' + status;
-    }
-
-    // دالة لتعديل الحجز
-    function editAppointment(appointmentId) {
-        alert('ميزة التعديل قيد التطوير...');
-    }
-
-    // عند تحميل الصفحة
-    document.addEventListener('DOMContentLoaded', function() {
-        const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('appointment_date');
-        if (dateInput) {
-            dateInput.min = today;
-        }
-    });
-
-    
-    // دالة لإضافة حجز جديد
-async function addAppointment() {
-    const form = document.getElementById('addAppointmentForm');
-    if (!form) return;
-    
-    const formData = new FormData(form);
-    
-    // التحقق من الحقول المطلوبة
-    const patientName = formData.get('patient_name');
-    const patientPhone = formData.get('patient_phone');
-    const appointmentDate = formData.get('appointment_date');
-    const appointmentTime = formData.get('appointment_time');
-    
-    if (!patientName || !patientPhone || !appointmentDate || !appointmentTime) {
-        alert('❌ الرجاء ملء جميع الحقول المطلوبة');
-        return;
-    }
-    
-    // بناء بيانات الحجز
-    const appointmentData = {
-        patient_name: patientName,
-        patient_phone: patientPhone,
-        appointment_date: appointmentDate,
-        appointment_time: appointmentTime,
-        notes: formData.get('notes') || ''
-    };
-    
-    // إضافة clinic_id فقط إذا كان المستخدم مسؤولاً واختار عيادة
-    const clinicSelect = document.getElementById('clinic_id');
-    if (clinicSelect) {
-        const clinicId = formData.get('clinic_id');
-        if (!clinicId) {
-            alert('❌ الرجاء اختيار العيادة');
-            return;
-        }
-        appointmentData.clinic_id = clinicId;
-    }
-    // إذا كان المستخدم عيادة، لا نرسل clinic_id وسيأخذها الخادم من الجلسة
-    
-    try {
-        const response = await fetch('/api/appointments', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(appointmentData)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert('✅ تم إضافة الحجز بنجاح');
-            closeAddAppointmentModal();
-            location.reload();
-        } else {
-            alert('❌ حدث خطأ أثناء إضافة الحجز');
-        }
-    } catch (error) {
-        console.error('Error adding appointment:', error);
-        alert('❌ حدث خطأ أثناء إضافة الحجز');
-    }
-}
-
-</script>
-
 <body class="dashboard">
     <header class="dashboard-header">
         <div class="container">
             <h1>إدارة الحجوزات</h1>
             <div class="user-info">
-                <span>
+                <span>؛
                     مرحباً، {{ session.username }}
                     {% if session.role == 'admin' %}
                     <span class="badge badge-admin">👑 مسؤول</span>
@@ -290,10 +48,13 @@ async function addAppointment() {
                 <div class="header-actions">
                     <div class="filters">
                         <select id="statusFilter" onchange="filterAppointments()">
-                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>جميع الحجوزات</option>
-                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>قيد الانتظار</option>
-                            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>مؤكدة</option>
-                            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ملغية</option>
+                            <option value="all" {% if status_filter=='all' %}selected{% endif %}>جميع الحجوزات</option>
+                            <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>قيد الانتظار
+                            </option>
+                            <option value="confirmed" {% if status_filter=='confirmed' %}selected{% endif %}>مؤكدة
+                            </option>
+                            <option value="cancelled" {% if status_filter=='cancelled' %}selected{% endif %}>ملغية
+                            </option>
                         </select>
                     </div>
                     <button class="btn btn-primary" onclick="showAddAppointmentModal()">➕ حجز جديد</button>
@@ -362,12 +123,15 @@ async function addAppointment() {
                             <td>
                                 <div class="actions">
                                     {% if appointment[6] == 'pending' %}
-                                    <button class="btn btn-sm btn-success" onclick="updateAppointmentStatus('{{ appointment[0] }}', 'confirmed')">تأكيد</button>
+                                    <button class="btn btn-sm btn-success"
+                                        onclick="updateAppointmentStatus('{{ appointment[0] }}', 'confirmed')">تأكيد</button>
                                     {% endif %}
                                     {% if appointment[6] != 'cancelled' %}
-                                    <button class="btn btn-sm btn-danger" onclick="updateAppointmentStatus('{{ appointment[0] }}', 'cancelled')">إلغاء</button>
+                                    <button class="btn btn-sm btn-danger"
+                                        onclick="updateAppointmentStatus('{{ appointment[0] }}', 'cancelled')">إلغاء</button>
                                     {% endif %}
-                                    <button class="btn btn-sm btn-secondary" onclick="editAppointment('{{ appointment[0] }}')">تعديل</button>
+                                    <button class="btn btn-sm btn-secondary"
+                                        onclick="editAppointment('{{ appointment[0] }}')">تعديل</button>
                                 </div>
                             </td>
                         </tr>
@@ -376,7 +140,8 @@ async function addAppointment() {
                             <td colspan="{% if session.role == 'admin' %}10{% else %}9{% endif %}" class="text-center">
                                 <div class="empty-state">
                                     <p>لا توجد حجوزات</p>
-                                    <button class="btn btn-primary" onclick="showAddAppointmentModal()">إضافة حجز جديد</button>
+                                    <button class="btn btn-primary" onclick="showAddAppointmentModal()">إضافة حجز
+                                        جديد</button>
                                 </div>
                             </td>
                         </tr>
@@ -433,37 +198,180 @@ async function addAppointment() {
         </div>
     </div>
 
+    <!-- Modal تعديل حجر -->
+    <div id="editAppointmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>تعديل بيانات الحجز</h3>
+                <span class="close" onclick="closeEditAppointmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editAppointmentForm">
+                    <input type="hidden" id="edit_appointment_id">
+                    <div class="form-group">
+                        <label for="edit_patient_name">اسم المريض *</label>
+                        <input type="text" id="edit_patient_name" name="patient_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_patient_phone">رقم الهاتف *</label>
+                        <input type="tel" id="edit_patient_phone" name="patient_phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_appointment_date">التاريخ *</label>
+                        <input type="date" id="edit_appointment_date" name="appointment_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_appointment_time">الوقت *</label>
+                        <input type="time" id="edit_appointment_time" name="appointment_time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_notes">ملاحظات</label>
+                        <textarea id="edit_notes" name="notes" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_status">حالة الحجز</label>
+                        <select id="edit_status" name="status">
+                            <option value="pending">⏳ قيد الانتظار</option>
+                            <option value="confirmed">✅ مؤكد</option>
+                            <option value="cancelled">❌ ملغى</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditAppointmentModal()">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="saveAppointmentChanges()">حفظ التعديلات</button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
+        // دالة لتحميل العيادات في select
+        async function loadClinics() {
+            try {
+                const response = await fetch('/api/clinics');
+                const clinics = await response.json();
+
+                const select = document.getElementById('clinic_id');
+                if (select) {
+                    select.innerHTML = '<option value="">اختر العيادة</option>';
+
+                    clinics.forEach(function (clinic) {
+                        const option = document.createElement('option');
+                        option.value = clinic.id;
+                        option.textContent = clinic.name + ' - ' + clinic.specialty;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading clinics:', error);
+                alert('❌ حدث خطأ في تحميل قائمة العيادات');
+            }
+        }
+
         // دالة لعرض modal إضافة حجز
         function showAddAppointmentModal() {
-            // تحميل العيادات فقط إذا كان المستخدم مسؤولاً
-            {% if session.role == 'admin' %}
-            loadClinics().then(() => {
+            // التحقق من دور المستخدم بناءً على وجود حقل clinic_id
+            const clinicSelect = document.getElementById('clinic_id');
+
+            if (clinicSelect) {
+                // إذا كان هناك حقل clinic_id، إذن المستخدم مسؤول ويجب تحميل العيادات
+                loadClinics().then(() => {
+                    document.getElementById('addAppointmentModal').style.display = 'block';
+                }).catch(error => {
+                    console.error('Error loading clinics:', error);
+                    document.getElementById('addAppointmentModal').style.display = 'block';
+                });
+            } else {
+                // إذا لم يكن هناك حقل clinic_id، إذن المستخدم عيادة
                 document.getElementById('addAppointmentModal').style.display = 'block';
-            }).catch(error => {
-                console.error('Error loading clinics:', error);
-                document.getElementById('addAppointmentModal').style.display = 'block';
-            });
-            {% else %}
-            document.getElementById('addAppointmentModal').style.display = 'block';
-            {% endif %}
-            
+            }
+
             // تعيين تاريخ اليوم كحد أدنى
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('appointment_date').min = today;
+            const dateInput = document.getElementById('appointment_date');
+            if (dateInput) {
+                dateInput.min = today;
+            }
         }
 
         // دالة لإغلاق modal إضافة حجز
         function closeAddAppointmentModal() {
             document.getElementById('addAppointmentModal').style.display = 'none';
-            document.getElementById('addAppointmentForm').reset();
+            const form = document.getElementById('addAppointmentForm');
+            if (form) {
+                form.reset();
+            }
+        }
+
+        // دالة لإضافة حجز جديد
+        async function addAppointment() {
+            const form = document.getElementById('addAppointmentForm');
+            if (!form) return;
+
+            const formData = new FormData(form);
+
+            // التحقق من الحقول المطلوبة
+            const patientName = formData.get('patient_name');
+            const patientPhone = formData.get('patient_phone');
+            const appointmentDate = formData.get('appointment_date');
+            const appointmentTime = formData.get('appointment_time');
+
+            if (!patientName || !patientPhone || !appointmentDate || !appointmentTime) {
+                alert('❌ الرجاء ملء جميع الحقول المطلوبة');
+                return;
+            }
+
+            // بناء بيانات الحجز
+            const appointmentData = {
+                patient_name: patientName,
+                patient_phone: patientPhone,
+                appointment_date: appointmentDate,
+                appointment_time: appointmentTime,
+                notes: formData.get('notes') || ''
+            };
+
+            // إضافة clinic_id فقط إذا كان المستخدم مسؤولاً واختار عيادة
+            const clinicSelect = document.getElementById('clinic_id');
+            if (clinicSelect) {
+                const clinicId = formData.get('clinic_id');
+                if (!clinicId) {
+                    alert('❌ الرجاء اختيار العيادة');
+                    return;
+                }
+                appointmentData.clinic_id = clinicId;
+            }
+            // إذا كان المستخدم عيادة، لا نرسل clinic_id وسيأخذها الخادم من الجلسة
+
+            try {
+                const response = await fetch('/api/appointments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(appointmentData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ تم إضافة الحجز بنجاح');
+                    closeAddAppointmentModal();
+                    location.reload();
+                } else {
+                    alert('❌ حدث خطأ أثناء إضافة الحجز');
+                }
+            } catch (error) {
+                console.error('Error adding appointment:', error);
+                alert('❌ حدث خطأ أثناء إضافة الحجز');
+            }
         }
 
         // دالة لتحديث حالة الحجز
         async function updateAppointmentStatus(appointmentId, status) {
             const statusText = status === 'confirmed' ? 'تأكيد' : 'إلغاء';
-            
+
             if (confirm(`هل تريد ${statusText} هذا الحجز؟`)) {
                 try {
                     const response = await fetch('/api/appointments/' + appointmentId, {
@@ -473,9 +381,9 @@ async function addAppointment() {
                         },
                         body: JSON.stringify({ status: status })
                     });
-                    
+
                     const result = await response.json();
-                    
+
                     if (result.success) {
                         alert(`✅ تم ${statusText} الحجز بنجاح`);
                         location.reload();
@@ -495,19 +403,93 @@ async function addAppointment() {
             window.location.href = '/appointments?status=' + status;
         }
 
-        // دالة لتعديل الحجز (يمكن تطويرها لاحقاً)
-        function editAppointment(appointmentId) {
-            alert('ميزة التعديل قيد التطوير...');
+        // دالة لعرض modal تعديل الحجز
+        // دالة لعرض modal تعديل الحجز
+        async function editAppointment(appointmentId) {
+            try {
+                const response = await fetch('/api/appointments/' + appointmentId);
+                const result = await response.json();
+
+                if (result.success) {
+                    const appointment = result.appointment;
+
+                    document.getElementById('edit_appointment_id').value = appointment.id;
+                    document.getElementById('edit_patient_name').value = appointment.patient_name;
+                    document.getElementById('edit_patient_phone').value = appointment.patient_phone;
+                    document.getElementById('edit_appointment_date').value = appointment.appointment_date;
+                    document.getElementById('edit_appointment_time').value = appointment.appointment_time;
+                    document.getElementById('edit_notes').value = appointment.notes || '';
+                    document.getElementById('edit_status').value = appointment.status;
+
+                    document.getElementById('editAppointmentModal').style.display = 'block';
+
+                    // تعيين تاريخ اليوم كحد أدنى
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('edit_appointment_date').min = today;
+                } else {
+                    alert('❌ ' + (result.error || 'حدث خطأ في تحميل بيانات الحجز'));
+                }
+            } catch (error) {
+                console.error('Error loading appointment:', error);
+                alert('❌ حدث خطأ في تحميل بيانات الحجز');
+            }
         }
 
-        // عند تحميل الصفحة، تعيين تاريخ اليوم كحد أدنى لتاريخ الحجز
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            const dateInput = document.getElementById('appointment_date');
-            if (dateInput) {
-                dateInput.min = today;
+        // دالة لإغلاق modal تعديل الحجز
+        function closeEditAppointmentModal() {
+            document.getElementById('editAppointmentModal').style.display = 'none';
+            document.getElementById('editAppointmentForm').reset();
+        }
+
+        // دالة لحفظ التعديلات
+        // دالة لحفظ التعديلات
+        async function saveAppointmentChanges() {
+            const appointmentId = document.getElementById('edit_appointment_id').value;
+
+            if (!appointmentId) {
+                alert('❌ خطأ في معرف الحجز');
+                return;
             }
-        });
+
+            const appointmentData = {
+                patient_name: document.getElementById('edit_patient_name').value,
+                patient_phone: document.getElementById('edit_patient_phone').value,
+                appointment_date: document.getElementById('edit_appointment_date').value,
+                appointment_time: document.getElementById('edit_appointment_time').value,
+                notes: document.getElementById('edit_notes').value,
+                status: document.getElementById('edit_status').value
+            };
+
+            // التحقق من الحقول المطلوبة
+            if (!appointmentData.patient_name || !appointmentData.patient_phone ||
+                !appointmentData.appointment_date || !appointmentData.appointment_time) {
+                alert('❌ الرجاء ملء جميع الحقول المطلوبة');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/appointments/' + appointmentId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(appointmentData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ تم تحديث الحجز بنجاح');
+                    closeEditAppointmentModal();
+                    location.reload();
+                } else {
+                    alert('❌ حدث خطأ أثناء تحديث الحجز: ' + (result.error || ''));
+                }
+            } catch (error) {
+                console.error('Error updating appointment:', error);
+                alert('❌ حدث خطأ أثناء تحديث الحجز');
+            }
+        }
     </script>
 
     <style>
@@ -549,4 +531,5 @@ async function addAppointment() {
         }
     </style>
 </body>
+
 </html>
